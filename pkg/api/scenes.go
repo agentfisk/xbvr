@@ -34,6 +34,15 @@ type RequestSelectScript struct {
 	FileID uint `json:"file_id"`
 }
 
+type RequestCustomScene struct {
+	SceneTitle string `json:"title"`
+	SceneID    string `json:"id"`
+}
+
+type RequestDeleteScene struct {
+	SceneID uint `json:"scene_id"`
+}
+
 type RequestEditSceneDetails struct {
 	Title        string   `json:"title"`
 	Synopsis     string   `json:"synopsis"`
@@ -86,6 +95,13 @@ func (i SceneResource) WebService() *restful.WebService {
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Writes(ResponseGetScenes{}))
 
+	ws.Route(ws.POST("/create").To(i.createCustomScene).
+		Metadata(restfulspec.KeyOpenAPITags, tags).
+		Writes(models.Scene{}))
+
+	ws.Route(ws.POST("/delete").To(i.deleteScene).
+		Metadata(restfulspec.KeyOpenAPITags, tags))
+
 	ws.Route(ws.POST("/{scene-id}/cuepoint").To(i.addSceneCuepoint).
 		Metadata(restfulspec.KeyOpenAPITags, tags).
 		Writes(models.Scene{}))
@@ -115,6 +131,80 @@ func (i SceneResource) WebService() *restful.WebService {
 		Writes(models.Scene{}))
 
 	return ws
+}
+
+func (i SceneResource) createCustomScene(req *restful.Request, resp *restful.Response) {
+	db, _ := models.GetDB()
+	defer db.Close()
+
+	//Get request data
+	var r RequestCustomScene
+	err := req.ReadEntity(&r)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	//Get scene id
+	currentTime := time.Now()
+	if r.SceneID == "" {
+		log.Info("SceneID missing from request!")
+		r.SceneID = "Custom-" + currentTime.Format("2006010215040506")
+	}
+
+	//Construct custom scene
+	var scene models.ScrapedScene
+	scene.SceneID = r.SceneID
+	scene.SceneType = "VR"
+	scene.Title = r.SceneTitle
+	scene.Studio = "Custom"
+	scene.Site = "CustomVR"
+	scene.HomepageURL = "http://localhost/" + scene.SceneID
+	scene.Covers = append(scene.Covers, "http://localhost/dont_cause_errors")
+	scene.Released = currentTime.Format("2006-01-02")
+
+	log.Infof("Creating custom scene: \"%v\" \"%v\"", scene.SceneID, scene.Title)
+
+	//Create custom scene
+	models.SceneCreateUpdateFromExternal(db, scene)
+	tasks.SearchIndex()
+
+	//Return resulting scene
+	var resultingScene models.Scene
+	err = resultingScene.GetIfExist(scene.SceneID)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	resp.WriteHeaderAndEntity(http.StatusOK, resultingScene)
+}
+
+func (i SceneResource) deleteScene(req *restful.Request, resp *restful.Response) {
+	db, _ := models.GetDB()
+	defer db.Close()
+
+	var r RequestDeleteScene
+	err := req.ReadEntity(&r)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	var scene models.Scene
+	err = db.First(&scene, r.SceneID).Error
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	files, _ := scene.GetFiles()
+	for _, file := range files {
+		file.SceneID = 0
+		file.Save()
+	}
+	db.Delete(&scene)
+	resp.WriteHeaderAndEntity(http.StatusOK, scene)
 }
 
 func (i SceneResource) getFilters(req *restful.Request, resp *restful.Response) {
@@ -256,12 +346,20 @@ func (i SceneResource) toggleList(req *restful.Request, resp *restful.Response) 
 		scene.Watchlist = !scene.Watchlist
 	}
 
+	if r.List == "trailerlist" {
+		scene.Trailerlist = !scene.Trailerlist
+	}
+
 	if r.List == "favourite" {
 		scene.Favourite = !scene.Favourite
 	}
 
 	if r.List == "needs_update" {
 		scene.NeedsUpdate = !scene.NeedsUpdate
+	}
+
+	if r.List == "watched" {
+		scene.IsWatched = !scene.IsWatched
 	}
 
 	scene.Save()
@@ -282,7 +380,7 @@ func (i SceneResource) searchSceneIndex(req *restful.Request, resp *restful.Resp
 	query := bleve.NewQueryStringQuery(q)
 
 	searchRequest := bleve.NewSearchRequest(query)
-	searchRequest.Fields = []string{"fulltext"}
+	searchRequest.Fields = []string{"Id", "title", "cast", "site", "description"}
 	searchRequest.IncludeLocations = true
 	searchRequest.From = 0
 	searchRequest.Size = 25
@@ -505,33 +603,7 @@ func (i SceneResource) editScene(req *restful.Request, resp *restful.Response) {
 			models.AddAction(scene.SceneID, "edit", "is_multipart", strconv.FormatBool(r.IsMultipart))
 		}
 
-		var diffs []string
-
-		newTags := make([]models.Tag, 0)
-		for _, v := range r.Tags {
-			nt := models.Tag{}
-			tagClean := models.ConvertTag(v)
-			if tagClean != "" {
-				db.Where(&models.Tag{Name: tagClean}).FirstOrCreate(&nt)
-				newTags = append(newTags, nt)
-			}
-		}
-
-		diffs = deep.Equal(scene.Tags, newTags)
-		if len(diffs) > 0 {
-			exactDifferences := getTagDifferences(scene.Tags, newTags)
-			for _, v := range exactDifferences {
-				models.AddAction(scene.SceneID, "edit", "tags", v)
-			}
-
-			for _, v := range scene.Tags {
-				db.Model(&scene).Association("Tags").Delete(&v)
-			}
-
-			for _, v := range newTags {
-				db.Model(&scene).Association("Tags").Append(&v)
-			}
-		}
+		ProcessTagChanges(&scene, &r.Tags, db)
 
 		newCast := make([]models.Actor, 0)
 		for _, v := range r.Cast {
@@ -540,7 +612,7 @@ func (i SceneResource) editScene(req *restful.Request, resp *restful.Response) {
 			newCast = append(newCast, nc)
 		}
 
-		diffs = deep.Equal(scene.Cast, newCast)
+		diffs := deep.Equal(scene.Cast, newCast)
 		if len(diffs) > 0 {
 			exactDifferences := getCastDifferences(scene.Cast, newCast)
 			for _, v := range exactDifferences {
@@ -610,4 +682,33 @@ func castContains(arr []models.Actor, val interface{}) bool {
 		}
 	}
 	return false
+}
+func ProcessTagChanges(scene *models.Scene, tags *[]string, db *gorm.DB) {
+	var diffs []string
+
+	newTags := make([]models.Tag, 0)
+	for _, v := range *tags {
+		nt := models.Tag{}
+		tagClean := models.ConvertTag(v)
+		if tagClean != "" {
+			db.Where(&models.Tag{Name: tagClean}).FirstOrCreate(&nt)
+			newTags = append(newTags, nt)
+		}
+	}
+
+	diffs = deep.Equal(scene.Tags, newTags)
+	if len(diffs) > 0 {
+		exactDifferences := getTagDifferences(scene.Tags, newTags)
+		for _, v := range exactDifferences {
+			models.AddAction(scene.SceneID, "edit", "tags", v)
+		}
+
+		for _, v := range scene.Tags {
+			db.Model(&scene).Association("Tags").Delete(&v)
+		}
+
+		for _, v := range newTags {
+			db.Model(&scene).Association("Tags").Append(&v)
+		}
+	}
 }

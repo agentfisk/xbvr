@@ -66,6 +66,10 @@ func SexBabesVR(wg *sync.WaitGroup, updateSite bool, knownScenes []string, out c
 			sc.Tags = append(sc.Tags, strings.TrimSpace(e.Text))
 		})
 
+		// trailer details
+		sc.TrailerType = "deovr"
+		sc.TrailerSrc = "http://sexbabesvr.com/deovr/video/id/" + sc.SiteID
+
 		// Cast
 		e.ForEach(`div.video-actress-name a`, func(id int, e *colly.HTMLElement) {
 			sc.Cast = append(sc.Cast, strings.TrimSpace(e.Text))
@@ -78,8 +82,8 @@ func SexBabesVR(wg *sync.WaitGroup, updateSite bool, knownScenes []string, out c
 		})
 
 		// Duration
-		e.ForEach(`div.video-additional div.grid-one-time span`, func(id int, e *colly.HTMLElement) {
-			durationText := strings.TrimSpace(strings.Replace(e.DOM.Parent().Text(), "min.", "", -1))
+		e.ForEach(`div.video-additional div.c-grid-one-time span`, func(id int, e *colly.HTMLElement) {
+			durationText := strings.TrimSpace(strings.Replace(e.Text, "min.", "", -1))
 			tmpDuration, err := strconv.Atoi(durationText)
 			if err == nil {
 				sc.Duration = tmpDuration

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,13 +19,13 @@ import (
 
 // SceneCuepoint data model
 type SceneCuepoint struct {
-	ID        uint      `gorm:"primary_key" json:"id"`
-	CreatedAt time.Time `json:"-"`
-	UpdatedAt time.Time `json:"-"`
+	ID        uint      `gorm:"primary_key" json:"id" xbvrbackup:"-"`
+	CreatedAt time.Time `json:"-" xbvrbackup:"-"`
+	UpdatedAt time.Time `json:"-" xbvrbackup:"-"`
 
-	SceneID   uint    `json:"-"`
-	TimeStart float64 `json:"time_start"`
-	Name      string  `json:"name"`
+	SceneID   uint    `json:"-" xbvrbackup:"-"`
+	TimeStart float64 `json:"time_start" xbvrbackup:"time_start"`
+	Name      string  `json:"name" xbvrbackup:"name"`
 }
 
 func (o *SceneCuepoint) Save() error {
@@ -51,51 +52,55 @@ func (o *SceneCuepoint) Save() error {
 
 // Scene data model
 type Scene struct {
-	ID        uint       `gorm:"primary_key" json:"id"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `sql:"index" json:"-"`
+	ID        uint       `gorm:"primary_key" json:"id" xbvrbackup:"-"`
+	CreatedAt time.Time  `json:"created_at" xbvrbackup:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at" xbvrbackup:"updated_at"`
+	DeletedAt *time.Time `sql:"index" json:"-" xbvrbackup:"-"`
 
-	SceneID         string    `json:"scene_id"`
-	Title           string    `json:"title"`
-	SceneType       string    `json:"scene_type"`
-	Studio          string    `json:"studio"`
-	Site            string    `json:"site"`
-	Tags            []Tag     `gorm:"many2many:scene_tags;" json:"tags"`
-	Cast            []Actor   `gorm:"many2many:scene_cast;" json:"cast"`
-	FilenamesArr    string    `json:"filenames_arr" sql:"type:text;"`
-	Images          string    `json:"images" sql:"type:text;"`
-	Files           []File    `json:"file"`
-	Duration        int       `json:"duration"`
-	Synopsis        string    `json:"synopsis" sql:"type:text;"`
-	ReleaseDate     time.Time `json:"release_date"`
-	ReleaseDateText string    `json:"release_date_text"`
-	CoverURL        string    `json:"cover_url"`
-	SceneURL        string    `json:"scene_url"`
-	IsMultipart     bool      `json:"is_multipart"`
+	SceneID         string    `json:"scene_id" xbvrbackup:"scene_id"`
+	Title           string    `json:"title" sql:"type:varchar(1024);" xbvrbackup:"title"`
+	SceneType       string    `json:"scene_type" xbvrbackup:"scene_type"`
+	Studio          string    `json:"studio" xbvrbackup:"studio"`
+	Site            string    `json:"site" xbvrbackup:"site"`
+	Tags            []Tag     `gorm:"many2many:scene_tags;" json:"tags" xbvrbackup:"tags"`
+	Cast            []Actor   `gorm:"many2many:scene_cast;" json:"cast" xbvrbackup:"cast"`
+	FilenamesArr    string    `json:"filenames_arr" sql:"type:text;" xbvrbackup:"filenames_arr"`
+	Images          string    `json:"images" sql:"type:text;" xbvrbackup:"images"`
+	Files           []File    `json:"file" xbvrbackup:"-"`
+	Duration        int       `json:"duration" xbvrbackup:"duration"`
+	Synopsis        string    `json:"synopsis" sql:"type:text;" xbvrbackup:"synopsis"`
+	ReleaseDate     time.Time `json:"release_date" xbvrbackup:"release_date"`
+	ReleaseDateText string    `json:"release_date_text" xbvrbackup:"release_date_text"`
+	CoverURL        string    `json:"cover_url" xbvrbackup:"cover_url"`
+	SceneURL        string    `json:"scene_url" xbvrbackup:"scene_url"`
+	IsMultipart     bool      `json:"is_multipart" xbvrbackup:"is_multipart"`
 
-	StarRating     float64         `json:"star_rating"`
-	Favourite      bool            `json:"favourite" gorm:"default:false"`
-	Watchlist      bool            `json:"watchlist" gorm:"default:false"`
-	IsAvailable    bool            `json:"is_available" gorm:"default:false"`
-	IsAccessible   bool            `json:"is_accessible" gorm:"default:false"`
-	IsWatched      bool            `json:"is_watched" gorm:"default:false"`
-	IsScripted     bool            `json:"is_scripted" gorm:"default:false"`
-	FunscriptSpeed int             `json:"funscript_speed" gorm:"default:0"`
-	Cuepoints      []SceneCuepoint `json:"cuepoints"`
-	History        []History       `json:"history"`
-	AddedDate      time.Time       `json:"added_date"`
-	LastOpened     time.Time       `json:"last_opened"`
-	TotalFileSize  int64           `json:"total_file_size"`
-	TotalWatchTime int             `json:"total_watch_time" gorm:"default:0"`
+	StarRating     float64         `json:"star_rating" xbvrbackup:"star_rating"`
+	Favourite      bool            `json:"favourite" gorm:"default:false" xbvrbackup:"favourite"`
+	Watchlist      bool            `json:"watchlist" gorm:"default:false" xbvrbackup:"watchlist"`
+	IsAvailable    bool            `json:"is_available" gorm:"default:false" xbvrbackup:"-"`
+	IsAccessible   bool            `json:"is_accessible" gorm:"default:false" xbvrbackup:"-"`
+	IsWatched      bool            `json:"is_watched" gorm:"default:false" xbvrbackup:"is_watched"`
+	IsScripted     bool            `json:"is_scripted" gorm:"default:false" xbvrbackup:"-"`
+	FunscriptSpeed int             `json:"funscript_speed" gorm:"default:0" xbvrbackup:"-"`
+	Cuepoints      []SceneCuepoint `json:"cuepoints" xbvrbackup:"-"`
+	History        []History       `json:"history" xbvrbackup:"-"`
+	AddedDate      time.Time       `json:"added_date" xbvrbackup:"added_date"`
+	LastOpened     time.Time       `json:"last_opened" xbvrbackup:"last_opened"`
+	TotalFileSize  int64           `json:"total_file_size" xbvrbackup:"-"`
+	TotalWatchTime int             `json:"total_watch_time" gorm:"default:0" xbvrbackup:"total_watch_time"`
 
-	HasVideoPreview bool `json:"has_preview" gorm:"default:false"`
+	HasVideoPreview bool `json:"has_preview" gorm:"default:false" xbvrbackup:"-"`
 	// HasVideoThumbnail bool `json:"has_video_thumbnail" gorm:"default:false"`
 
-	NeedsUpdate bool `json:"needs_update"`
+	NeedsUpdate   bool   `json:"needs_update" xbvrbackup:"-"`
+	EditsApplied  bool   `json:"edits_applied" gorm:"default:false" xbvrbackup:"-"`
+	TrailerType   string `json:"trailer_type" xbvrbackup:"trailer_type"`
+	TrailerSource string `gorm:"size:1000" json:"trailer_source" xbvrbackup:"trailer_source"`
+	Trailerlist   bool   `json:"trailerlist" gorm:"default:false" xbvrbackup:"trailerlist"`
 
-	Fulltext string  `gorm:"-" json:"fulltext"`
-	Score    float64 `gorm:"-" json:"_score"`
+	Description string  `gorm:"-" json:"description" xbvrbackup:"-"`
+	Score       float64 `gorm:"-" json:"_score" xbvrbackup:"-"`
 }
 
 type Image struct {
@@ -259,6 +264,16 @@ func (o *Scene) GetScriptSpeedFromFiles(files []File) int {
 	return newestScript.FunscriptSpeed
 }
 
+func (o *Scene) GetHSPFiles() ([]File, error) {
+	db, _ := GetDB()
+	defer db.Close()
+
+	var files []File
+	db.Preload("Volume").Where("scene_id = ? AND type = ?", o.ID, "hsp").Find(&files)
+
+	return files, nil
+}
+
 func (o *Scene) PreviewExists() bool {
 	if _, err := os.Stat(filepath.Join(common.VideoPreviewDir, fmt.Sprintf("%v.mp4", o.SceneID))); os.IsNotExist(err) {
 		return false
@@ -369,6 +384,11 @@ func (o *Scene) UpdateStatus() {
 		changed = true
 	}
 
+	if !o.HasVideoPreview && o.PreviewExists() {
+		o.HasVideoPreview = true
+		changed = true
+	}
+
 	totalWatchTime := o.GetTotalWatchTime()
 	if o.TotalWatchTime != totalWatchTime {
 		o.TotalWatchTime = totalWatchTime
@@ -381,10 +401,15 @@ func (o *Scene) UpdateStatus() {
 }
 
 func SceneCreateUpdateFromExternal(db *gorm.DB, ext ScrapedScene) error {
+	if ext.SceneID == "" {
+		return nil
+	}
+
 	var o Scene
 	db.Where(&Scene{SceneID: ext.SceneID}).FirstOrCreate(&o)
 
 	o.NeedsUpdate = false
+	o.EditsApplied = false
 	o.SceneID = ext.SceneID
 
 	if o.Title != ext.Title {
@@ -413,6 +438,10 @@ func SceneCreateUpdateFromExternal(db *gorm.DB, ext ScrapedScene) error {
 	}
 	o.SceneURL = ext.HomepageURL
 
+	// Trailers
+	o.TrailerType = ext.TrailerType
+	o.TrailerSource = ext.TrailerSrc
+
 	if ext.Released != "" {
 		dateParsed, err := dateparse.ParseLocal(strings.Replace(ext.Released, ",", "", -1))
 		if err == nil {
@@ -430,17 +459,21 @@ func SceneCreateUpdateFromExternal(db *gorm.DB, ext ScrapedScene) error {
 	var images []Image
 
 	for i := range ext.Covers {
-		images = append(images, Image{
-			URL:  ext.Covers[i],
-			Type: "cover",
-		})
+		if ext.Covers[i] != "" {
+			images = append(images, Image{
+				URL:  ext.Covers[i],
+				Type: "cover",
+			})
+		}
 	}
 
 	for i := range ext.Gallery {
-		images = append(images, Image{
-			URL:  ext.Gallery[i],
-			Type: "gallery",
-		})
+		if ext.Gallery[i] != "" {
+			images = append(images, Image{
+				URL:  ext.Gallery[i],
+				Type: "gallery",
+			})
+		}
 	}
 
 	imgTxt, err := json.Marshal(images)
@@ -571,16 +604,38 @@ func QueryScenes(r RequestSceneList, enablePreload bool) ResponseSceneList {
 	}
 
 	var sites []string
+	var excludedSites []string
 	for _, i := range r.Sites {
-		sites = append(sites, i.OrElse(""))
+		switch firstchar := string(i.OrElse(" ")[0]); firstchar {
+		case "!":
+			exSite, _ := i.Get()
+			excludedSites = append(excludedSites, exSite[1:])
+		default:
+			sites = append(sites, i.OrElse(""))
+		}
 	}
+
 	if len(sites) > 0 {
 		tx = tx.Where("site IN (?)", sites)
 	}
+	for _, exclude := range excludedSites {
+		tx = tx.Where("site NOT IN (?)", exclude)
+	}
 
 	var tags []string
+	var excludedTags []string
+	var mustHaveTags []string
 	for _, i := range r.Tags {
-		tags = append(tags, i.OrElse(""))
+		switch firstchar := string(i.OrElse(" ")[0]); firstchar {
+		case "&":
+			inclTag, _ := i.Get()
+			mustHaveTags = append(mustHaveTags, inclTag[1:])
+		case "!":
+			exTag, _ := i.Get()
+			excludedTags = append(excludedTags, exTag[1:])
+		default:
+			tags = append(tags, i.OrElse(""))
+		}
 	}
 	if len(tags) > 0 {
 		tx = tx.
@@ -588,10 +643,33 @@ func QueryScenes(r RequestSceneList, enablePreload bool) ResponseSceneList {
 			Joins("left join tags on tags.id=scene_tags.tag_id").
 			Where("tags.name IN (?)", tags)
 	}
+	for idx, musthave := range mustHaveTags {
+		stAlias := "st_i" + strconv.Itoa(idx)
+		tagAlias := "t_i" + strconv.Itoa(idx)
+		tx = tx.
+			Joins("join scene_tags "+stAlias+" on "+stAlias+".scene_id=scenes.id").
+			Joins("join tags "+tagAlias+" on "+tagAlias+".id="+stAlias+".tag_id and "+tagAlias+".name=?", musthave)
+	}
+	for idx, exclude := range excludedTags {
+		stAlias := "st_e" + strconv.Itoa(idx)
+		tagAlias := "t_e" + strconv.Itoa(idx)
+		tx = tx.Where("scenes.id not in (select "+stAlias+".scene_id  from tags "+tagAlias+" join scene_tags "+stAlias+" on "+stAlias+".scene_id =scenes.id and "+tagAlias+".id ="+stAlias+".tag_id where "+tagAlias+".name =?)", exclude)
+	}
 
 	var cast []string
+	var mustHaveCast []string
+	var excludedCast []string
 	for _, i := range r.Cast {
-		cast = append(cast, i.OrElse(""))
+		switch firstchar := string(i.OrElse(" ")[0]); firstchar {
+		case "&":
+			inclCast, _ := i.Get()
+			mustHaveCast = append(mustHaveCast, inclCast[1:])
+		case "!":
+			exCast, _ := i.Get()
+			excludedCast = append(excludedCast, exCast[1:])
+		default:
+			cast = append(cast, i.OrElse(""))
+		}
 	}
 	if len(cast) > 0 {
 		tx = tx.
@@ -599,16 +677,55 @@ func QueryScenes(r RequestSceneList, enablePreload bool) ResponseSceneList {
 			Joins("left join actors on actors.id=scene_cast.actor_id").
 			Where("actors.name IN (?)", cast)
 	}
+	for idx, musthave := range mustHaveCast {
+		scAlias := "sc_i" + strconv.Itoa(idx)
+		actorAlias := "a_i" + strconv.Itoa(idx)
+		tx = tx.
+			Joins("join scene_cast "+scAlias+" on "+scAlias+".scene_id=scenes.id").
+			Joins("join actors "+actorAlias+" on "+actorAlias+".id="+scAlias+".actor_id and "+actorAlias+".name=?", musthave)
+	}
+	for idx, exclude := range excludedCast {
+		scAlias := "sc_e" + strconv.Itoa(idx)
+		actorAlias := "a_e" + strconv.Itoa(idx)
+		tx = tx.Where("scenes.id not in (select "+scAlias+".scene_id  from actors "+actorAlias+" join scene_cast "+scAlias+" on "+scAlias+".scene_id =scenes.id and "+actorAlias+".id ="+scAlias+".actor_id where "+actorAlias+".name =?)", exclude)
+	}
 
 	var cuepoint []string
+	var mustHaveCuepoint []string
+	var excludedCuepoint []string
 	for _, i := range r.Cuepoint {
-		cuepoint = append(cuepoint, i.OrElse(""))
+		switch firstchar := string(i.OrElse(" ")[0]); firstchar {
+		case "&":
+			inclCp, _ := i.Get()
+			mustHaveCuepoint = append(mustHaveCuepoint, inclCp[1:])
+		case "!":
+			exCp, _ := i.Get()
+			excludedCuepoint = append(excludedCuepoint, exCp[1:])
+		default:
+			cuepoint = append(cuepoint, i.OrElse(""))
+		}
 	}
+
 	if len(cuepoint) > 0 {
 		tx = tx.Joins("left join scene_cuepoints on scene_cuepoints.scene_id=scenes.id")
-		for _, i := range cuepoint {
-			tx = tx.Where("scene_cuepoints.name LIKE ?", "%"+i+"%")
+		var where string
+		for idx, i := range cuepoint {
+			if idx == 0 {
+				where = "scene_cuepoints.name LIKE '%" + i + "%'"
+			} else {
+				where = where + " or scene_cuepoints.name LIKE '%" + i + "%'"
+			}
 		}
+		tx = tx.Where(where)
+	}
+	for idx, musthave := range mustHaveCuepoint {
+		scpAlias := "scp_i" + strconv.Itoa(idx)
+		tx = tx.
+			Joins("join scene_cuepoints "+scpAlias+" on "+scpAlias+".scene_id=scenes.id and "+scpAlias+".name like ?", "%"+musthave+"%")
+	}
+	for idx, exclude := range excludedCuepoint {
+		scpAlias := "scp_e" + strconv.Itoa(idx)
+		tx = tx.Where("scenes.id not in (select "+scpAlias+".scene_id  from scene_cuepoints "+scpAlias+" where "+scpAlias+".scene_id =scenes.id and "+scpAlias+".name like ?)", "%"+exclude+"%")
 	}
 
 	if r.Released.Present() {

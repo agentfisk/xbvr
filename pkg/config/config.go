@@ -8,6 +8,16 @@ import (
 	"github.com/xbapps/xbvr/pkg/models"
 )
 
+type CronSchedule struct {
+	Enabled         bool `default:"true" json:"enabled"`
+	HourInterval    int  `json:"hourInterval"`
+	UseRange        bool `default:"false" json:"useRange"`
+	MinuteStart     int  `default:"0" json:"minuteStart"`
+	HourStart       int  `default:"0" json:"hourStart"`
+	HourEnd         int  `default:"23" json:"hourEnd"`
+	RunAtStartDelay int  `default:"0" json:"runAtStartDelay"`
+}
+
 type ObjectConfig struct {
 	Server struct {
 		BindAddress string `default:"0.0.0.0" json:"bindAddress"`
@@ -18,10 +28,21 @@ type ObjectConfig struct {
 		Password string `default:"" json:"password"`
 	} `json:"security"`
 	Web struct {
-		TagSort     string `default:"by-tag-count" json:"tagSort"`
-		SceneEdit   bool   `default:"false" json:"sceneEdit"`
-		UpdateCheck bool   `default:"true" json:"updateCheck"`
+		TagSort          string `default:"by-tag-count" json:"tagSort"`
+		SceneWatchlist   bool   `default:"true" json:"sceneWatchlist"`
+		SceneFavourite   bool   `default:"true" json:"sceneFavourite"`
+		SceneWatched     bool   `default:"false" json:"sceneWatched"`
+		SceneEdit        bool   `default:"false" json:"sceneEdit"`
+		SceneCuepoint    bool   `default:"true" json:"sceneCuepoint"`
+		ShowHspFile      bool   `default:"true" json:"showHspFile"`
+		SceneTrailerlist bool   `default:"true" json:"sceneTrailerlist"`
+		UpdateCheck      bool   `default:"true" json:"updateCheck"`
 	} `json:"web"`
+	Vendor struct {
+		TPDB struct {
+			ApiToken string `default:"" json:"apiToken"`
+		} `json:"tpdb"`
+	} `json:"vendor"`
 	Interfaces struct {
 		DLNA struct {
 			Enabled      bool     `default:"true" json:"enabled"`
@@ -34,10 +55,21 @@ type ObjectConfig struct {
 			AuthEnabled     bool   `default:"false" json:"auth_enabled"`
 			RenderHeatmaps  bool   `default:"false" json:"render_heatmaps"`
 			FunscriptSpeeds bool   `default:"false" json:"funscript_speeds"`
+			TrackWatchTime  bool   `default:"true" json:"track_watch_time"`
 			RemoteEnabled   bool   `default:"false" json:"remote_enabled"`
 			Username        string `default:"" json:"username"`
 			Password        string `default:"" json:"password"`
 		} `json:"deovr"`
+		Heresphere struct {
+			AllowFileDeletes      bool `default:"false" json:"allow_file_deletes"`
+			AllowRatingUpdates    bool `default:"false" json:"allow_rating_updates"`
+			AllowFavoriteUpdates  bool `default:"false" json:"allow_favorite_updates"`
+			AllowHspData          bool `default:"false" json:"allow_hsp_data"`
+			AllowTagUpdates       bool `default:"false" json:"allow_tag_updates"`
+			AllowCuepointUpdates  bool `default:"false" json:"allow_cuepoint_updates"`
+			AllowWatchlistUpdates bool `default:"false" json:"allow_watchlist_updates"`
+			MultitrackCuepoints   bool `default:"true" json:"multitrack_cuepoints"`
+		} `json:"heresphere"`
 	} `json:"interfaces"`
 	Library struct {
 		Preview struct {
@@ -50,8 +82,33 @@ type ObjectConfig struct {
 		} `json:"preview"`
 	} `json:"library"`
 	Cron struct {
-		ScrapeContentInterval int `default:"12" json:"scrapeContentInt"`
-		RescanLibraryInterval int `default:"2" json:"rescanLibraryInt"`
+		RescrapeSchedule struct {
+			Enabled         bool `default:"true" json:"enabled"`
+			HourInterval    int  `default:"12" json:"hourInterval"`
+			UseRange        bool `default:"false" json:"useRange"`
+			MinuteStart     int  `default:"0" json:"minuteStart"`
+			HourStart       int  `default:"0" json:"hourStart"`
+			HourEnd         int  `default:"23" json:"hourEnd"`
+			RunAtStartDelay int  `default:"0" json:"runAtStartDelay"`
+		} `json:"rescrapeSchedule"`
+		RescanSchedule struct {
+			Enabled         bool `default:"true" json:"enabled"`
+			HourInterval    int  `default:"2" json:"hourInterval"`
+			UseRange        bool `default:"false" json:"useRange"`
+			MinuteStart     int  `default:"0" json:"minuteStart"`
+			HourStart       int  `default:"0" json:"hourStart"`
+			HourEnd         int  `default:"23" json:"hourEnd"`
+			RunAtStartDelay int  `default:"0" json:"runAtStartDelay"`
+		} `json:"rescanSchedule"`
+		PreviewSchedule struct {
+			Enabled         bool `default:"false" json:"enabled"`
+			HourInterval    int  `default:"2" json:"hourInterval"`
+			UseRange        bool `default:"false" json:"useRange"`
+			MinuteStart     int  `default:"0" json:"minuteStart"`
+			HourStart       int  `default:"0" json:"hourStart"`
+			HourEnd         int  `default:"23" json:"hourEnd"`
+			RunAtStartDelay int  `default:"0" json:"runAtStartDelay"`
+		} `json:"previewSchedule"`
 	} `json:"cron"`
 }
 
